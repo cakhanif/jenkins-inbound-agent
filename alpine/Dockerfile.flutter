@@ -1,0 +1,78 @@
+ARG version=latest-alpine-jdk11
+FROM jenkins/agent:$version
+
+ARG version
+ARG MAVEN_VERSION=3.8.4
+
+ARG BASE_URL=https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries
+ARG GCLOUD_URL=https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+ARG S2I_URL=https://github.com/openshift/source-to-image/releases/download/v1.3.1/source-to-image-v1.3.1-a5a77147-linux-amd64.tar.gz
+
+ENV FLUTTER_HOME=/opt/flutter \
+    FLUTTER_VERSION=2.10.1
+ENV FLUTTER_ROOT=$FLUTTER_HOME
+
+ENV ANDROID_HOME=/opt/android-sdk-linux \
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    ANDROID_SDK_TOOLS_VERSION=8092744 \
+    ANDROID_PLATFORM_VERSION=30 \
+    ANDROID_BUILD_TOOLS_VERSION=30.0.2
+
+ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin:${FLUTTER_HOME}/bin:${FLUTTER_HOME}/bin/cache/dart-sdk/bin:${ANDROID_HOME}/cmdline-tools/latest/bin
+
+LABEL Description="This is a base image, which allows connecting Jenkins agents via JNLP protocols" Vendor="Jenkins project" Version="$version"
+
+ARG USER=jenkins
+
+USER root
+
+RUN apk add --update --no-cache wget grep zip unzip xz openssh-client ruby-full ruby-bundler git libgcc libstdc++ curl python3 openrc && ln -sf python3 /usr/bin/python
+
+RUN mkdir -p ${FLUTTER_HOME} \
+  && curl -fsSL -o s2i.tar.gz ${S2I_URL} \
+  && tar -xzf s2i.tar.gz \
+  && chmod +x ./s2i && mv ./s2i /usr/local/bin \
+  && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+  && chmod +x ./kubectl \
+  && mv ./kubectl /usr/local/bin/kubectl \
+  && mkdir -p /usr/local/gcloud \
+  && curl -o google-cloud-sdk.tar.gz https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz \
+  && tar -xvf $(pwd)/google-cloud-sdk.tar.gz -C /usr/local/gcloud  \
+  && /usr/local/gcloud/google-cloud-sdk/install.sh \
+  && git clone --depth 1 --branch ${FLUTTER_VERSION} https://github.com/flutter/flutter.git ${FLUTTER_HOME} \
+  && yes | flutter doctor --android-licenses \
+  && chown -R root:root ${FLUTTER_HOME}
+
+##add andorid sdk
+RUN set -o xtrace \
+    && cd /opt \
+    && sh -c 'echo "en_US.UTF-8 UTF-8" > /etc/locale.gen' \
+    && wget -q https://dl.google.com/android/repository/commandlinetools-linux-${ANDROID_SDK_TOOLS_VERSION}_latest.zip -O android-sdk-tools.zip \
+    && mkdir -p ${ANDROID_HOME}/cmdline-tools/ \
+    && unzip -q android-sdk-tools.zip -d ${ANDROID_HOME}/cmdline-tools/ \
+    && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \
+    && chown -R root:root $ANDROID_HOME \
+    && rm android-sdk-tools.zip \
+    && yes | sdkmanager --licenses \
+    && wget -O /usr/bin/android-wait-for-emulator https://raw.githubusercontent.com/travis-ci/travis-cookbooks/master/community-cookbooks/android-sdk/files/default/android-wait-for-emulator \
+    && chmod +x /usr/bin/android-wait-for-emulator \
+    && touch /root/.android/repositories.cfg \
+    && sdkmanager platform-tools \
+    && mkdir -p /root/.android \
+    && touch /root/.android/repositories.cfg
+
+#install android sdk
+RUN yes | sdkmanager \
+    "platforms;android-$ANDROID_PLATFORM_VERSION" \
+    "build-tools;$ANDROID_BUILD_TOOLS_VERSION" \
+    && yes | flutter doctor --android-licenses \
+    && flutter doctor
+
+COPY jenkins-agent /usr/local/bin/jenkins-agent
+RUN chmod +x /usr/local/bin/jenkins-agent \
+    && ln -s /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-slave \
+    && chown -R ${USER}.${USER} /home/jenkins
+
+ENTRYPOINT ["/usr/local/bin/jenkins-agent"]

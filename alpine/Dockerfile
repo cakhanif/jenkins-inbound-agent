@@ -38,7 +38,7 @@ RUN rc-update add docker boot
 
 ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 
-COPY jenkins-agent /usr/local/bin/jenkins-agent
+COPY alpine/jenkins-agent /usr/local/bin/jenkins-agent
 RUN chmod +x /usr/local/bin/jenkins-agent \
     && ln -s /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-slave \
     && chown -R ${USER}.${USER} /home/jenkins

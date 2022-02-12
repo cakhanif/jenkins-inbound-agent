@@ -1,0 +1,55 @@
+name: Docker
+
+on:
+  push:
+    # Publish `master` as Docker `latest` image.
+    branches:
+      - main
+
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+
+  # Run tests for any PRs.
+  pull_request:
+
+env:
+  # TODO: Change variable to your image's name.
+  TZ: Asia/Jakarta
+  IMAGE_NAME: jenkins-inbound-agent
+  IMAGE_NAME_FLUTTER: jenkins-flutter-inbound-agent
+  HUB_IMAGE_NAME: cakhanif/jenkins-inbound-agent
+jobs:
+  # Run tests.
+  # See also https://docs.docker.com/docker-hub/builds/automated-testing/
+  
+  push_docker_hub:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+        - uses: actions/checkout@v2
+  
+        - name: Build Image
+          run: docker build . --file Dockerfile --tag cakhanif/$IMAGE_NAME
+          
+        - name: Build Image for Flutter
+          run: docker build . --file Dockerfile.flutter --tag cakhanif/$IMAGE_NAME_FLUTTER
+          
+        - name: Login to Docker Registry
+          run: |           
+            # Login Docker Registry
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u cakhanif --password-stdin
+            
+        - name: Push to Docker Registry
+          shell: bash
+          run: |           
+            
+            docker tag cakhanif/$IMAGE_NAME cakhanif/$IMAGE_NAME:$(date '+%y%m%d%H%M')
+            docker tag cakhanif/$IMAGE_NAME_FLUTTER cakhanif/$IMAGE_NAME_FLUTTER:$(date '+%y%m%d%H%M')
+            
+            #push to docker registry
+            docker push cakhanif/$IMAGE_NAME:$(date '+%y%m%d%H%M')
+            docker push cakhanif/$IMAGE_NAME
+            
+            docker push cakhanif/$IMAGE_NAME_FLUTTER:$(date '+%y%m%d%H%M')
+            docker push cakhanif/$IMAGE_NAME_FLUTTER

@@ -23,17 +23,17 @@ jobs:
   # Run tests.
   # See also https://docs.docker.com/docker-hub/builds/automated-testing/
   
-  push_docker_hub:
+  alpine_image:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
         - uses: actions/checkout@v2
   
         - name: Build Image
-          run: docker build . --file Dockerfile --tag cakhanif/$IMAGE_NAME
+          run: docker build . --file ./alpine/Dockerfile --tag cakhanif/$IMAGE_NAME
           
         - name: Build Image for Flutter
-          run: docker build . --file Dockerfile.flutter --tag cakhanif/$IMAGE_NAME_FLUTTER
+          run: docker build . --file ./alpine/Dockerfile.flutter --tag cakhanif/$IMAGE_NAME_FLUTTER
           
         - name: Login to Docker Registry
           run: |           
@@ -44,12 +44,17 @@ jobs:
           shell: bash
           run: |           
             
-            docker tag cakhanif/$IMAGE_NAME cakhanif/$IMAGE_NAME:$(date '+%y%m%d%H%M')
-            docker tag cakhanif/$IMAGE_NAME_FLUTTER cakhanif/$IMAGE_NAME_FLUTTER:$(date '+%y%m%d%H%M')
+            docker tag cakhanif/$IMAGE_NAME cakhanif/$IMAGE_NAME:alpine-$(date '+%y%m%d%H%M')
+            docker tag cakhanif/$IMAGE_NAME cakhanif/$IMAGE_NAME:alpine-latest
+            
+            docker tag cakhanif/$IMAGE_NAME_FLUTTER cakhanif/$IMAGE_NAME_FLUTTER:alpine-$(date '+%y%m%d%H%M')
+            docker tag cakhanif/$IMAGE_NAME_FLUTTER cakhanif/$IMAGE_NAME_FLUTTER:alpine-latest
             
             #push to docker registry
-            docker push cakhanif/$IMAGE_NAME:$(date '+%y%m%d%H%M')
+            docker push cakhanif/$IMAGE_NAME:alpine-$(date '+%y%m%d%H%M')
+            docker push cakhanif/$IMAGE_NAME:alpine-latest
             docker push cakhanif/$IMAGE_NAME
             
-            docker push cakhanif/$IMAGE_NAME_FLUTTER:$(date '+%y%m%d%H%M')
+            docker push cakhanif/$IMAGE_NAME_FLUTTER:alpine-$(date '+%y%m%d%H%M')
+            docker push cakhanif/$IMAGE_NAME_FLUTTER:alpine-latest
             docker push cakhanif/$IMAGE_NAME_FLUTTER

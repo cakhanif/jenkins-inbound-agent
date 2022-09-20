@@ -2,7 +2,7 @@ ARG version=latest-alpine-jdk11
 FROM jenkins/agent:$version
 
 ARG version
-ARG MAVEN_VERSION=3.8.4
+ARG MAVEN_VERSION=3.8.6
 
 ARG BASE_URL=https://dlcdn.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries
 ARG GCLOUD_URL=https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
